@@ -1,111 +1,239 @@
-# Multi-Container Runtime
+# Multi-Container Runtime 
 
-A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
+## 🔹 Team Information
 
-Read [`project-guide.md`](project-guide.md) for the full project specification.
+* **Vishal H** — PES1UG24AM322
+* **Ayush Bastawad** — PES1UG24AM348
 
 ---
 
-## Getting Started
+## 🔹 Overview
 
-### 1. Fork the Repository
+This project implements a lightweight container runtime in C using Linux system primitives. It demonstrates key operating system concepts such as process isolation, scheduling, logging, and kernel interaction in a practical environment.
 
-1. Go to [github.com/shivangjhalani/OS-Jackfruit](https://github.com/shivangjhalani/OS-Jackfruit)
-2. Click **Fork** (top-right)
-3. Clone your fork:
+###  Key Features
 
-```bash
-git clone https://github.com/<your-username>/OS-Jackfruit.git
-cd OS-Jackfruit
-```
+* Multi-container execution using Linux namespaces
+* Centralized supervisor process
+* Per-container logging system
+* Kernel-level monitoring using a Loadable Kernel Module (LKM)
+* CPU vs I/O scheduling demonstration
+* Clean lifecycle management
 
-### 2. Set Up Your VM
+---
 
-You need an **Ubuntu 22.04 or 24.04** VM with **Secure Boot OFF**. WSL will not work.
+## 🔹 Build, Load, and Run Instructions
 
-Install dependencies:
-
-```bash
-sudo apt update
-sudo apt install -y build-essential linux-headers-$(uname -r)
-```
-
-### 3. Run the Environment Check
-
-```bash
-cd boilerplate
-chmod +x environment-check.sh
-sudo ./environment-check.sh
-```
-
-Fix any issues reported before moving on.
-
-### 4. Prepare the Root Filesystem
-
-```bash
-mkdir rootfs-base
-wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
-
-# Make one writable copy per container you plan to run
-cp -a ./rootfs-base ./rootfs-alpha
-cp -a ./rootfs-base ./rootfs-beta
-```
-
-Do not commit `rootfs-base/` or `rootfs-*` directories to your repository.
-
-### 5. Understand the Boilerplate
-
-The `boilerplate/` folder contains starter files:
-
-| File                   | Purpose                                             |
-| ---------------------- | --------------------------------------------------- |
-| `engine.c`             | User-space runtime and supervisor skeleton          |
-| `monitor.c`            | Kernel module skeleton                              |
-| `monitor_ioctl.h`      | Shared ioctl command definitions                    |
-| `Makefile`             | Build targets for both user-space and kernel module |
-| `cpu_hog.c`            | CPU-bound test workload                             |
-| `io_pulse.c`           | I/O-bound test workload                             |
-| `memory_hog.c`         | Memory-consuming test workload                      |
-| `environment-check.sh` | VM environment preflight check                      |
-
-Use these as your starting point. You are free to restructure the repository however you want — the submission requirements are listed in the project guide.
-
-### 6. Build and Verify
+### 1. Build the Project
 
 ```bash
 cd boilerplate
 make
 ```
 
-If this compiles without errors, your environment is ready.
+---
 
-### 7. GitHub Actions Smoke Check
-
-Your fork will inherit a minimal GitHub Actions workflow from this repository.
-
-That workflow only performs CI-safe checks:
-
-- `make -C boilerplate ci`
-- user-space binary compilation (`engine`, `memory_hog`, `cpu_hog`, `io_pulse`)
-- `./boilerplate/engine` with no arguments must print usage and exit with a non-zero status
-
-The CI-safe build command is:
+### 2. Load Kernel Module
 
 ```bash
-make -C boilerplate ci
+sudo insmod monitor.ko
+sudo dmesg | tail -n 20
 ```
-
-This smoke check does not test kernel-module loading, supervisor runtime behavior, or container execution.
 
 ---
 
-## What to Do Next
+### 3. Start Supervisor
 
-Read [`project-guide.md`](project-guide.md) end to end. It contains:
+```bash
+sudo ./engine supervisor ./rootfs-base
+```
 
-- The six implementation tasks (multi-container runtime, CLI, logging, kernel monitor, scheduling experiments, cleanup)
-- The engineering analysis you must write
-- The exact submission requirements, including what your `README.md` must contain (screenshots, analysis, design decisions)
+---
 
-Your fork's `README.md` should be replaced with your own project documentation as described in the submission package section of the project guide. (As in get rid of all the above content and replace with your README.md)
+### 4. Prepare Containers
+
+```bash
+cp -a ./rootfs-base ./rootfs-alpha
+cp -a ./rootfs-base ./rootfs-beta
+```
+
+---
+
+### 5. Start Containers
+
+```bash
+sudo ./engine start alpha ./rootfs-alpha /cpu_hog
+sudo ./engine start beta ./rootfs-beta /io_pulse
+```
+
+---
+
+### 6. Inspect Containers
+
+```bash
+sudo ./engine ps
+```
+
+---
+
+### 7. View Logs
+
+```bash
+ls logs
+cat logs/alpha.log
+```
+
+---
+
+### 8. Stop Containers
+
+```bash
+sudo ./engine stop alpha
+sudo ./engine stop beta
+```
+
+---
+
+## 📸 Demo with Screenshots
+
+### 1. Build Process
+
+Compilation of runtime and kernel module.
+![Build](./images/build.png)
+
+---
+
+### 2. Supervisor Execution
+
+Supervisor initializing and managing containers.
+![Supervisor](./images/supervisor.png)
+
+---
+
+### 3. Multi-Container Execution
+
+Running multiple containers (alpha & beta).
+![Containers](./images/containers.png)
+
+---
+
+### 4. Container Metadata (PS Output)
+
+Displays container ID, PID, and state.
+![PS](./images/ps.png)
+
+---
+
+### 5. Logging System
+
+Per-container logs being generated and stored.
+![Logs](./images/logs.png)
+
+---
+
+### 6. Kernel Module Output
+
+Kernel module successfully loaded and verified using dmesg.
+![Kernel](./images/dmseg.png)
+
+---
+
+### 7. CPU Scheduling Behavior
+
+CPU-bound process observed using `top`.
+![Top](./images/top.png)
+
+---
+
+## 🔹 Engineering Analysis
+
+### 🔹 Process Isolation
+
+* Containers use Linux namespaces
+* Independent process trees
+* Isolated execution environments
+
+---
+
+### 🔹 Supervisor Design
+
+* Central controller for container lifecycle
+* Manages process creation and termination
+* Coordinates logging and execution
+
+---
+
+### 🔹 Logging System
+
+* Each container writes to its own log file
+* Output captured using pipes
+* Logs persist after container termination
+
+---
+
+### 🔹 Kernel Monitoring
+
+* Implemented as a Loadable Kernel Module (LKM)
+* Demonstrates kernel-user interaction
+* Tracks container-related activity
+
+---
+
+### 🔹 Scheduling Behavior
+
+* CPU-bound processes utilize high CPU
+* I/O-bound processes yield CPU frequently
+* Demonstrates Linux scheduling behavior
+
+---
+
+## 🔹 Design Decisions & Tradeoffs
+
+### Container Isolation
+
+* **Approach:** Namespace-based
+* **Tradeoff:** Lightweight but less secure than full container runtimes
+
+### Supervisor
+
+* **Approach:** Single controller process
+* **Tradeoff:** Easy to manage but introduces a single point of failure
+
+### Logging
+
+* **Approach:** File-based logging
+* **Tradeoff:** Simple but not highly scalable
+
+### Kernel Monitoring
+
+* **Approach:** LKM-based tracking
+* **Tradeoff:** Powerful but increases system complexity
+
+---
+
+## 🔹 Observations
+
+* CPU-intensive processes dominate CPU usage
+* Logging system works consistently
+* Containers start and stop correctly
+* Kernel module loads successfully
+
+---
+
+## 🔹 Notes
+
+* All screenshots captured from a Linux VM environment
+* Some containers may exit quickly depending on workload
+
+---
+
+## 🔹 Conclusion
+
+This project demonstrates a functional container runtime integrating:
+
+* Process isolation
+* Logging pipeline
+* Kernel interaction
+* Scheduling behavior
+
+It provides practical insight into how operating systems manage processes, resources, and execution environments.
